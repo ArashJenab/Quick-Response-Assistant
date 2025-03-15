@@ -2,16 +2,13 @@ import tkinter as tk
 from tkinter import ttk
 import openai
 
-
-
-
 class Var:
-    codeVer     = "v1.7" # Define the code version as a string
+    codeVer     = "v1.8" # Define the code version as a string
     app_width   = 450 #Default window width
-    #app_height  = 900 #Replaced by full height
-
-
+    
 var = Var()
+    
+
 # Function to handle API request and generate the response
 def generate_response():
     style = style_var.get()
@@ -20,10 +17,7 @@ def generate_response():
     original_message = original_message_input.get("1.0", tk.END).strip()
     what_to_respond = response_input.get("1.0", tk.END).strip()
 
-
-
-    # Prompt Generation
-    if original_message != "":  # Not Empty Original message
+    if original_message:
         prompt = (
             f"You are tasked with responding to a communication in the style of '{style}' "
             f"with a tone '{respformat}' and in the format of '{comformat}'. "
@@ -37,24 +31,42 @@ def generate_response():
             f"Here's what you need to say: '{what_to_respond}'."
         )
 
-
-
-    # OpenAI API call
+    api_key_path = "openai_api_key.txt"
     try:
-        with open("openai_api_key.txt", "r") as file:
-                openai.api_key=file.read().strip()
+        with open(api_key_path, "r") as file:
+            openai.api_key = file.read().strip()
+        if not openai.api_key:  # File is empty
+            raise ValueError("API key file is empty.")
+    except FileNotFoundError:
+        response_output_text.delete("1.0", tk.END)
+        response_output_text.insert(
+            tk.END,
+            "To use this tool, you'll need your own OpenAI API key saved as a plain text file "
+            "named openai_api_key.txt in the same directory. The file should contain only the API key—"
+            "no quotes or assignments (\"\" or =), just the key itself."
+        )
+        return
+    except ValueError:
+        response_output_text.delete("1.0", tk.END)
+        response_output_text.insert(
+            tk.END,
+            "Your openai_api_key.txt file is empty. Please add your OpenAI API key to the file."
+        )
+        return
+
+    try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            #max_tokens=256,
             top_p=1
         )
         result = response.choices[0].message.content
-        response_output_text.delete("1.0", tk.END)  # Clear previous text
+        response_output_text.delete("1.0", tk.END)
         response_output_text.insert(tk.END, result)
     except Exception as e:
-        output_label.config(text=f"Error: {str(e)}")
+        response_output_text.delete("1.0", tk.END)
+        response_output_text.insert(tk.END, f"Error: {str(e)}")
 
 def clear_fields():
     original_message_input.delete("1.0", tk.END)  # Clear original message
@@ -82,23 +94,23 @@ def focus_next_widget(event):
 app = tk.Tk()
 app.title("Quick Response Assistant")
 
-# Load the custom icon
-icon = tk.PhotoImage(file='AT.png')  # Use .png format
-app.iconphoto(False, icon)
+# Handle missing AT.png using try-except
+try:
+    icon = tk.PhotoImage(file="AT.png")
+    app.iconphoto(False, icon)
+except tk.TclError:
+    pass  # If the file is not found, just continue without an icon
 
-# Set Minimum Size for the Window
-#app.geometry('450x900')  # Set initial size (width x height)
-
-screen_width = app.winfo_screenwidth()
-screen_height = app.winfo_screenheight()
+# Get screen width and height
+screen_width    = app.winfo_screenwidth()
+screen_height   = app.winfo_screenheight()
 
 # Get default app size
-window_width = var.app_width  # Example: 450
-window_height = int(round(screen_height * 0.98, 0))
+window_width    = var.app_width  # Example: 450
+window_height   = int(round(screen_height * 0.98, 0))
 
-#app.geometry('450x900')
-x_offset = 25
-y_offset = 0
+x_offset        = 25
+y_offset        = 0
 app.geometry(f"{window_width}x{window_height}+{x_offset}+{y_offset}")
 app.geometry(f"{window_width}x{window_height}")
 app.minsize(450, 900)   # Set minimum size (width x height)
@@ -157,21 +169,21 @@ style_mapping = {
     "Strategic": "Use a high-level, long-term perspective focusing on goals, planning, and outcomes.",
     "Replicate Sender": "Replicate the style and tone of the received message."
 }
-style_label = tk.Label(app, text="Communication Style:")
-style_dropdown = ttk.Combobox(app, textvariable=style_var, values=style_options)
+style_label     = tk.Label(app, text="Communication Style:")
+style_dropdown  = ttk.Combobox(app, textvariable=style_var, values=style_options)
 
 
 
 
 # Dropdown for Communication format
-comformat_var = tk.StringVar(value="Email")
+comformat_var   = tk.StringVar(value="Email")
 comformat_options = [
     "Email",
     "Text or Messages",
     "Social Media Posts"
     ]
-comformat_label = tk.Label(app, text="Communication Format:")
-comformat_dropdown = ttk.Combobox(app, textvariable=comformat_var, values=comformat_options)
+comformat_label     = tk.Label(app, text="Communication Format:")
+comformat_dropdown  = ttk.Combobox(app, textvariable=comformat_var, values=comformat_options)
 
 
 
